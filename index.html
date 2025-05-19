@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Filament</title>
+    <link rel="stylesheet" href="css/style.css">
+    <!-- โหลด Chart.js จาก CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="main-content">
+            <h1>3D Filament</h1>
+            <img src="image/Logo_LT.bmp" alt="">
+        </div>
+
+        <div id="filteredValues"></div> <!-- สำหรับแสดงค่าที่กรอง -->
+        <canvas id="myChart" width="200" height="100"></canvas>
+        <div id="dashboard"></div>
+        
+    </div>
+
+    
+    <script>
+        const sheetID = '1lbAtrS3GVUdQ9cRTQHjkv1ATxDvbIIpw3KycOS1djGQ'; // แทนที่ด้วย ID ของ Google Sheet
+        const range = 'Sheet1!A1:C200'; // ช่วงข้อมูล
+        const apiKey = 'AIzaSyAcozc3VbZ5JvRxyotrYhtOnw36fHv_4XM'; // API Key
+        let myChart; //  ต้องประกาศตรงนี้ เพื่อให้ใช้ใน plotChart()
+    
+        async function fetchData() {
+          const response = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetID}/values/${range}?key=${apiKey}`);
+          const data = await response.json();
+          if (data.values) {
+          renderDashboard(data.values);
+
+          // กรองเฉพาะแถวที่ column แรก = 1
+          const filteredValues = filterDataByCategory(data.values, 1);
+          renderFilteredValues(filteredValues); // แสดงค่าที่กรองได้
+          plotChart(filteredValues);
+        }
+          else document.getElementById("dashboard").innerText = "ไม่พบข้อมูล";
+        }
+    
+        function renderDashboard(data) {
+          let html = '<table><tr>';
+          data[0].forEach(h => html += `<th>${h}</th>`);
+          html += '</tr>';
+          data.slice(1).forEach(row => {
+            html += '<tr>';
+            row.forEach(cell => html += `<td>${cell}</td>`);
+            html += '</tr>';
+          });
+          html += '</table>';
+          document.getElementById('dashboard').innerHTML = html;
+        }
+
+        function filterDataByCategory(data, categoryValue) {
+          const rows = data.slice(1); // ข้ามแถวหัวตาราง
+          const filtered = rows.filter(row => row[0] == categoryValue); // คัดเฉพาะที่ column แรก = categoryValue
+          const values = filtered.map(row => Number(row[1])); // เอาเฉพาะค่าจาก column ที่ 2
+          return values;
+        }
+
+        function renderFilteredValues(values) {
+          const container = document.getElementById("filteredValues");
+          container.innerHTML = `<p>ค่าที่กรองได้ (category = 1): ${values.join(', ')}</p>`;
+        }
+
+        // plot graph
+        function plotChart(values) {
+    const labels = values.map((_, i) => `แถว ${i + 1}`);
+
+    const ctx = document.getElementById('myChart').getContext('2d');
+
+    if (myChart) {
+      myChart.destroy(); // เคลียร์กราฟเดิมก่อน
+    }
+
+    myChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'ค่าจาก category = 1',
+          data: values,
+          backgroundColor: 'rgba(54, 162, 235, 0.2)',
+          borderColor: 'rgba(54, 162, 235, 1)',
+          borderWidth: 1,
+          tension: 0.3,
+          fill: false
+        }]
+      },
+      options: {
+        responsive: true, // ปิด responsive true false
+        //maintainAspectRatio: false, // (ถ้าอยากให้เต็ม canvas)
+        scales: {
+          y: {
+            beginAtZero: true
+          }
+        }
+      }
+    });
+  }
+    
+        fetchData();
+      </script>
+
+</body>
+</html>
